@@ -13,13 +13,13 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-// 数据目录放在用户主目录下，跟安装位置无关
-const DATA_DIR = join(homedir(), '.dsh-sector-ticker');
+// 数据目录放在用户主目录下，跟安装位置无关（测试可用环境变量覆盖）
+const DATA_DIR = process.env.DSH_SECTOR_TICKER_DATA || join(homedir(), '.dsh-sector-ticker');
 try { mkdirSync(DATA_DIR, { recursive: true }); } catch { /* ignore */ }
 const UNIVERSE = join(DATA_DIR, 'universe.json');
 const CONFIG = join(DATA_DIR, 'config.json');
 const RING_FILE = join(DATA_DIR, 'ring.json');
-const PORT = 8790;
+const PORT = Number(process.env.DSH_SECTOR_TICKER_PORT) || 8790;
 const KEEP_MS = 90_000;
 const UNIVERSE_TTL = 7 * 24 * 3600_000;
 
@@ -40,7 +40,14 @@ const WATCH_THEMES = [
   ['新能源', ['新能源', '电池', '光伏设备']],
   ['白酒', ['白酒Ⅱ', '白酒', '酿酒行业']],
 ];
-const WATCH_INDEXES = ['上证指数', '深证成指', '创业板指', '科创50', '沪深300'];
+// 大盘用固定 secid：它们不在东财「板块」列表里，必须硬编码
+const WATCH_INDEXES = [
+  ['上证指数', '1.000001'],
+  ['深证成指', '0.399001'],
+  ['创业板指', '0.399006'],
+  ['科创50', '1.000688'],
+  ['沪深300', '1.000300'],
+];
 
 const ring = new Map();
 let targets = [];
@@ -114,18 +121,20 @@ async function resolveTargets() {
   const fresh = u && Array.isArray(u.list) && u.list.length && Date.now() - (u.at || 0) < UNIVERSE_TTL;
   if (!fresh) {
     const list = await fetchSectors();
-    if (list.length) {
+    // 少于 500 条说明请求被截断/失败，不写缓存，等 30 秒后重试
+    if (list.length >= 500) {
       u = { at: Date.now(), list };
       try { writeFileSync(UNIVERSE, JSON.stringify(u), 'utf8'); } catch { /* ignore */ }
+    } else {
+      lastError = `板块列表不完整(${list.length})`;
     }
   }
   if (!u || !Array.isArray(u.list)) { lastError = '板块列表不可用'; return; }
 
   const byName = new Map(u.list.map((s) => [s.name, s]));
   const out = [];
-  for (const label of WATCH_INDEXES) {
-    const s = byName.get(label);
-    if (s) out.push({ label, code: s.code, bucket: 'indices' });
+  for (const [label, code] of WATCH_INDEXES) {
+    out.push({ label, code, bucket: 'indices' });
   }
   for (const [label, cands] of WATCH_THEMES) {
     let hit = null;
@@ -347,6 +356,14 @@ export function apply(ctx) {
     const t = setInterval(() => { resolveTargets().catch(() => {}); }, 600_000);
     return () => clearInterval(t);
   }, 'sector-ticker: universe reload');
+
+  // 板块列表拉取失败时 30 秒重试，而不是等 10 分钟
+  fx(() => {
+    const t = setInterval(() => {
+      if (!targets.length) resolveTargets().catch(() => {});
+    }, 30_000);
+    return () => clearInterval(t);
+  }, 'sector-ticker: universe retry');
 
   fx(() => {
     const t = setInterval(saveRing, 10_000);
