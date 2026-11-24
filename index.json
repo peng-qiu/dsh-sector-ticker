@@ -1,0 +1,40 @@
+{
+  "format": 1,
+  "title": {
+    "en": "peng-qiu DSH plugins",
+    "zh": "peng-qiu 的 DSH 插件"
+  },
+  "description": {
+    "en": "Plugins for DeepSeek Harness by peng-qiu.",
+    "zh": "peng-qiu 维护的 DeepSeek Harness 插件。"
+  },
+  "plugins": [
+    {
+      "name": "dsh-sector-ticker",
+      "title": {
+        "en": "Sector ticker",
+        "zh": "板块盯盘轮播"
+      },
+      "description": {
+        "en": "A-share sector and gold ticker in the composer dock: day change, 1-minute change, and bold/flashing alerts on sharp moves.",
+        "zh": "输入框下方两行行情：金价与 A 股自选板块的当日涨跌、1 分钟变化，急涨急跌时加粗并标记。"
+      },
+      "author": "peng-qiu",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/peng-qiu/dsh-sector-ticker"
+      },
+      "versions": [
+        {
+          "version": "1.0.0",
+          "publishTimestamp": 1795490400,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/peng-qiu/dsh-sector-ticker.git",
+            "commit": "f46bf4accfe292b2727456ae95bad11e709be249"
+          }
+        }
+      ]
+    }
+  ]
+}

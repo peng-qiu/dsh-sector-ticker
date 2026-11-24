@@ -1,4 +1,4 @@
-﻿# dsh-sector-ticker
+# dsh-sector-ticker
 
 在 DeepSeek Harness 的输入框下方加两行行情：**金价** 和 **A 股自选板块**。
 每行显示当日涨跌、最近 1 分钟变化，急涨急跌时加粗、变色并打上 `⚠大幅` / `⚠⚠剧烈` 标记。
@@ -47,6 +47,20 @@ dsh plugin install /path/to/dsh-sector-ticker
 安装后刷新页面（`Ctrl+Shift+R`），输入框下方出现两行。
 
 **完整的安装、验证、配置、排错见 [INSTALL.md](./INSTALL.md)。**
+
+## 作为插件索引使用
+
+本仓库自带一个 **format 1** 索引文档 `index.json`（已用官方解析器
+`@deepseek-ai/dsh-plugin-market-index` 校验通过），可以直接加进 DSH 的「发现」页：
+
+1. 插件 → 实验性插件 → 启用 **自定义插件索引**
+2. 插件 → 发现 → 管理索引源 → 添加：
+
+```
+https://raw.githubusercontent.com/peng-qiu/dsh-sector-ticker/main/index.json
+```
+
+3. 在「发现」里就能搜到 `dsh-sector-ticker` 并一键安装
 
 > **安全**：插件不含任何 API Key 或账号信息；只访问东方财富与新浪的公开行情接口；
 > 数据全部留在本机 `~/.dsh-sector-ticker/`；接口只监听 `127.0.0.1:8790`。
