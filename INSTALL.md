@@ -19,7 +19,7 @@
 ## 方式二：命令行安装
 
 ```bash
-# 从 Git 仓库（把 USER 换成实际用户名）
+# 从 Git 仓库
 dsh plugin install git+https://github.com/peng-qiu/dsh-sector-ticker.git
 
 # 或从本地目录
