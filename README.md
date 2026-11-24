@@ -1,4 +1,4 @@
-# dsh-sector-ticker
+﻿# dsh-sector-ticker
 
 在 DeepSeek Harness 的输入框下方加两行行情：**金价** 和 **A 股自选板块**。
 每行显示当日涨跌、最近 1 分钟变化，急涨急跌时加粗、变色并打上 `⚠大幅` / `⚠⚠剧烈` 标记。
@@ -36,7 +36,7 @@ CPO      up 3.52%        ( 1m  up 0.003% )                       插件▾
 
 ```bash
 # 从 Git 仓库
-dsh plugin install git+https://github.com/USER/dsh-sector-ticker.git
+dsh plugin install git+https://github.com/peng-qiu/dsh-sector-ticker.git
 
 # 从本地目录
 dsh plugin install /path/to/dsh-sector-ticker

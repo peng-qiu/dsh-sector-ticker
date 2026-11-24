@@ -1,4 +1,4 @@
-# 安装说明
+﻿# 安装说明
 
 ## 前置条件
 
@@ -20,7 +20,7 @@
 
 ```bash
 # 从 Git 仓库（把 USER 换成实际用户名）
-dsh plugin install git+https://github.com/USER/dsh-sector-ticker.git
+dsh plugin install git+https://github.com/peng-qiu/dsh-sector-ticker.git
 
 # 或从本地目录
 dsh plugin install /path/to/dsh-sector-ticker

@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "dsh-sector-ticker",
   "version": "1.0.0",
   "private": false,
@@ -16,11 +16,11 @@
   "author": "am <lhl2048@163.com>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/USER/dsh-sector-ticker.git"
+    "url": "git+https://github.com/peng-qiu/dsh-sector-ticker.git"
   },
-  "homepage": "https://github.com/USER/dsh-sector-ticker#readme",
+  "homepage": "https://github.com/peng-qiu/dsh-sector-ticker#readme",
   "bugs": {
-    "url": "https://github.com/USER/dsh-sector-ticker/issues"
+    "url": "https://github.com/peng-qiu/dsh-sector-ticker/issues"
   },
   "exports": {
     ".": "./index.js",
