@@ -1,5 +1,7 @@
 # dsh-sector-ticker
 
+**中文** | [English](./README.en.md)
+
 在 DeepSeek Harness 的输入框下方加两行行情：**金价** 和 **A 股自选板块**。
 每行显示当日涨跌、最近 1 分钟变化，急涨急跌时加粗、变色并打上 `⚠大幅` / `⚠⚠剧烈` 标记。
 
