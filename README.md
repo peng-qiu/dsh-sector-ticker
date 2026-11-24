@@ -35,13 +35,21 @@ CPO      up 3.52%        ( 1m  up 0.003% )                       插件▾
 ## 安装
 
 ```bash
+# 从 Git 仓库
+dsh plugin install git+https://github.com/USER/dsh-sector-ticker.git
+
 # 从本地目录
 dsh plugin install /path/to/dsh-sector-ticker
-
-# 或在 DSH 里：插件 → 添加插件 → 选择目录
 ```
 
+也可以直接：DSH → 插件 → 添加插件 → 选择本目录。
+
 安装后刷新页面（`Ctrl+Shift+R`），输入框下方出现两行。
+
+**完整的安装、验证、配置、排错见 [INSTALL.md](./INSTALL.md)。**
+
+> **安全**：插件不含任何 API Key 或账号信息；只访问东方财富与新浪的公开行情接口；
+> 数据全部留在本机 `~/.dsh-sector-ticker/`；接口只监听 `127.0.0.1:8790`。
 
 ## 配置
 
