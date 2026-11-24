@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Sector ticker",
+    "description": "Rotates A-share sector moves and the tech average at the top of the frame, highlighting an anomaly with its industry cluster and size. Expand it for the top seven and to switch the display mode between in-app, desktop overlay, or both.",
+    "detail": "docs/DETAIL.md"
+  }
+}
