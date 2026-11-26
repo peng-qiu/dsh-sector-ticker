@@ -147,6 +147,15 @@ window.__ModuleLoader__.load({
       };
       const [goldMode, setGoldMode] = useState(readGoldMode);
       const [i, setI] = useState(0);
+      // 异动时把轮播"按"在那个板块上 12 秒，而不是替换掉整行的信息
+      const [pin, setPin] = useState(null);
+      const lastAnomAt = useRef(0);
+      useEffect(() => {
+        const a = snap && snap.anomaly;
+        if (!a || !a.at || a.at === lastAnomAt.current) return;
+        lastAnomAt.current = a.at;
+        setPin({ label: a.cluster, until: Date.now() + 12_000 });
+      }, [snap]);
       const alive = useRef(true);
 
       useEffect(() => {
@@ -255,7 +264,8 @@ window.__ModuleLoader__.load({
       const anomaly = snap && snap.anomaly && (snap.now || Date.now()) - snap.anomaly.at < ANOMALY_TTL
         ? snap.anomaly : null;
       const gold = snap && snap.gold;
-      const cur = list.length ? list[i % list.length] : null;
+      const rotating = list.length ? list[i % list.length] : null;
+      const cur = (pin && Date.now() < pin.until ? (list.find((x) => x.label === pin.label) || null) : null) || rotating;
       const hasGold = gold && typeof gold.price === 'number';
       const hasSector = !!(cur || anomaly);
 
@@ -304,13 +314,11 @@ window.__ModuleLoader__.load({
       // 第二行：拼音 up/down xx% ( 窗口 up/down xx% ) + 插件（静默时只隐藏信息，下拉保留）
       let sectorRow = null;
       if (hasSector) {
-        const isUp = anomaly ? (typeof anomaly.dir === 'number' ? anomaly.dir >= 0 : true) : (cur ? cur.pct >= 0 : true);
+        const isUp = cur ? cur.pct >= 0 : true;
         const word = isUp ? 'up' : 'down';
         const color = isUp ? UP : DOWN;
-        const code = anomaly
-          ? (PY_CLUSTER[anomaly.cluster] || PY[anomaly.cluster] || '') + (anomaly.n >= 3 ? String(anomaly.n) : '')
-          : (cur ? cur.code : '');
-        const magnitude = (anomaly ? anomaly.burst : (cur ? Math.abs(cur.pct) : 0)).toFixed(2) + '%';
+        const code = cur ? cur.code : '';
+        const magnitude = (cur ? Math.abs(cur.pct) : 0).toFixed(2) + '%';
         // 1 分钟变化：优先 Host 的 net，没有再回落到客户端历史（刷新/重启后立刻可用）
         const pickSec = (h, ms, label) => {
           if (!h.length) return null;
@@ -323,10 +331,16 @@ window.__ModuleLoader__.load({
           const h = (cur && secHist.current.get(cur.label)) || [];
           return pickSec(h, 60_000, '1m') || pickSec(h, 20_000, '20s');
         })();
-        const subNet = !anomaly && cur
-          ? (typeof cur.net === 'number' ? cur.net : (shortA ? shortA.val : null))
+        // 被异动按住的板块，括号里显示那段 20 秒急动；否则显示 1 分钟变化
+        const pinnedBurst = pin && Date.now() < pin.until && anomaly
+          ? (anomaly.dir >= 0 ? anomaly.burst : -anomaly.burst)
           : null;
-        const subWin = typeof cur?.net === 'number' ? '1m' : (shortA ? shortA.win : '1m');
+        const subNet = cur
+          ? (pinnedBurst !== null
+            ? pinnedBurst
+            : (typeof cur.net === 'number' ? cur.net : (shortA ? shortA.val : null)))
+          : null;
+        const subWin = pinnedBurst !== null ? '20s' : (typeof cur?.net === 'number' ? '1m' : (shortA ? shortA.win : '1m'));
         const subWord = subNet === null ? '' : subNet >= 0 ? 'up' : 'down';
         const subColor = subNet === null ? 'inherit' : subNet >= 0 ? UP : DOWN;
         const muted = { color: 'inherit', opacity: 0.6 };
@@ -360,7 +374,7 @@ window.__ModuleLoader__.load({
         );
         const sSev = sevOf(sMag, 0.30, 0.55);
         const spans = sectorMode === 'silent' ? [] : [
-          anomaly ? h('span', { key: 'd', style: S.dot }) : null,
+          pinnedBurst !== null ? h('span', { key: 'd', style: S.dot }) : null,
           h('span', { key: 'c', style: S.code }, code),
           h('span', { key: 'w', style: { color } }, word),
           h('span', { key: 'm', style: { color, fontWeight: 600 } }, magnitude),
