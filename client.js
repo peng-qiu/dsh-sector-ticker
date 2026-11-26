@@ -190,14 +190,40 @@ window.__ModuleLoader__.load({
       }, []);
 
       const list = [];
+      const secItems = [];
       if (snap && snap.watch) {
         for (const w of snap.watch.indices) {
-          if (typeof w.pct === 'number') list.push({ k: 'i' + w.label, label: w.label, code: PY[w.label] || w.label, pct: w.pct, net: w.net });
+          if (typeof w.pct === 'number') secItems.push({ k: 'i' + w.label, label: w.label, code: PY[w.label] || w.label, pct: w.pct, net: w.net });
         }
         for (const w of snap.watch.themes) {
-          if (typeof w.pct === 'number') list.push({ k: 't' + w.label, label: w.label, code: PY[w.label] || w.label, pct: w.pct, net: w.net });
+          if (typeof w.pct === 'number') secItems.push({ k: 't' + w.label, label: w.label, code: PY[w.label] || w.label, pct: w.pct, net: w.net });
         }
       }
+
+      // 国际宏观轮播：美元指数、布伦特
+      const macroItems = [];
+      if (snap && snap.macro) {
+        const addMacro = (key, label) => {
+          const m = snap.macro[key];
+          if (m && typeof m.price === 'number' && typeof m.pct === 'number') {
+            macroItems.push({
+              k: 'm' + key,
+              label,
+              code: key + ' ' + m.price.toFixed(2),
+              pct: m.pct,
+              net: typeof m.net1m === 'number' ? m.net1m : null,
+              burst: typeof m.burst === 'number' ? m.burst : 0,
+            });
+          }
+        };
+        addMacro('dxy', 'dxy');
+        addMacro('brent', 'brent');
+      }
+
+      // 收盘后板块只是昨收的钝化数字，没有轮播价值：只轮国际两项。
+      const marketClosed = !!(snap && snap.session === 'closed');
+      if (marketClosed && macroItems.length) list.push(...macroItems);
+      else list.push(...secItems, ...macroItems);
 
       useEffect(() => {
         if (list.length < 2) return undefined;
@@ -282,7 +308,7 @@ window.__ModuleLoader__.load({
         const word = isUp ? 'up' : 'down';
         const color = isUp ? UP : DOWN;
         const code = anomaly
-          ? (PY_CLUSTER[anomaly.cluster] || 'X') + (anomaly.n >= 3 ? anomaly.n : '')
+          ? (PY_CLUSTER[anomaly.cluster] || PY[anomaly.cluster] || '') + (anomaly.n >= 3 ? String(anomaly.n) : '')
           : (cur ? cur.code : '');
         const magnitude = (anomaly ? anomaly.burst : (cur ? Math.abs(cur.pct) : 0)).toFixed(2) + '%';
         // 1 分钟变化：优先 Host 的 net，没有再回落到客户端历史（刷新/重启后立刻可用）
@@ -329,6 +355,7 @@ window.__ModuleLoader__.load({
           burstA,
           typeof cur?.net === 'number' ? Math.abs(cur.net) : 0,
           netA === null ? 0 : netA,
+          cur && typeof cur.burst === 'number' ? cur.burst : 0,
           anomaly && anomaly.burst ? anomaly.burst : 0,
         );
         const sSev = sevOf(sMag, 0.30, 0.55);

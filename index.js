@@ -89,13 +89,24 @@ function loadRing() {
   if (Array.isArray(j.gold)) {
     for (const s of j.gold) if (s && s.t > cut && isFinite(s.p)) goldRing.push(s);
   }
+  // 美元指数 / 布伦特也恢复历史：否则每次重启都要重新攒满 55 秒才有 1 分钟值。
+  if (j.macro && typeof j.macro === 'object') {
+    for (const key of ['dxy', 'brent']) {
+      const arr = Array.isArray(j.macro[key]) ? j.macro[key] : [];
+      for (const s of arr) if (s && s.t > cut && isFinite(s.p)) macroRing[key].push(s);
+    }
+  }
 }
 
 function saveRing() {
   try {
     const sector = {};
     for (const [k, v] of ring) sector[k] = v;
-    writeFileSync(RING_FILE, JSON.stringify({ sector, gold: goldRing }), 'utf8');
+    writeFileSync(RING_FILE, JSON.stringify({
+      sector,
+      gold: goldRing,
+      macro: { dxy: macroRing.dxy, brent: macroRing.brent },
+    }), 'utf8');
   } catch { /* 忽略 */ }
 }
 
@@ -286,6 +297,80 @@ function setDisplayMode(mode) {
   writeFileSync(CONFIG, JSON.stringify({ ...c, display: mode }, null, 2), 'utf8');
 }
 
+// 国际宏观：美元指数（东财 100.UDI）与布伦特原油（新浪 hf_OIL）。
+// A 股收盘后板块没有可轮播的内容，这两项继续填满第二行。
+let macro = { dxy: null, brent: null };
+const macroRing = { dxy: [], brent: [] };
+
+/** 从 ring 里算 1 分钟变化与 20 秒内最大位移（百分比）。 */
+function shortStats(key, now, price) {
+  const arr = macroRing[key];
+  arr.push({ t: now, p: price });
+  const cut = now - KEEP_MS;
+  while (arr.length && arr[0].t < cut) arr.shift();
+  let ref = null;
+  for (const s of arr) if (now - s.t >= 55_000 && (!ref || s.t > ref.t)) ref = s;
+  const net1m = ref && ref.p > 0 ? ((price - ref.p) / ref.p) * 100 : null;
+  let burst = 0;
+  for (let a = 0; a < arr.length; a++) {
+    if (now - arr[a].t > 60_000) continue;
+    for (let b = a + 1; b < arr.length; b++) {
+      if (arr[b].t - arr[a].t > 20_000) break;
+      if (arr[a].p <= 0) continue;
+      const mv = Math.abs((arr[b].p - arr[a].p) / arr[a].p) * 100;
+      if (mv > burst) burst = mv;
+    }
+  }
+  return { net1m, burst };
+}
+
+async function pollMacro() {
+  try {
+    const j = await api('/api/qt/stock/get?secid=100.UDI&fields=f43,f60,f86');
+    const d = j && j.data;
+    if (d && isFinite(Number(d.f43))) {
+      const price = Number(d.f43) / 100;
+      const prev = Number(d.f60) / 100;
+      const now = Date.now();
+      const stats = shortStats('dxy', now, price);
+      macro.dxy = {
+        price,
+        prevClose: prev,
+        pct: prev > 0 ? ((price - prev) / prev) * 100 : null,
+        net1m: stats.net1m,
+        burst: stats.burst,
+        at: now,
+      };
+    }
+  } catch { /* 忽略：下一轮再试 */ }
+  try {
+    const r = await fetch('https://hq.sinajs.cn/list=hf_OIL', {
+      headers: { 'User-Agent': UA, Referer: 'https://finance.sina.com.cn' },
+      signal: AbortSignal.timeout(6000),
+    });
+    const txt = await r.text();
+    const m = txt.match(/hf_OIL="([^"]*)"/);
+    if (m) {
+      const f = m[1].split(',');
+      const price = Number(f[0]);
+      const prev = Number(f[7]);
+      if (isFinite(price) && price > 0) {
+        const now = Date.now();
+        const stats = shortStats('brent', now, price);
+        macro.brent = {
+          price,
+          prevClose: prev,
+          pct: prev > 0 ? ((price - prev) / prev) * 100 : null,
+          net1m: stats.net1m,
+          burst: stats.burst,
+          time: f[6],
+          at: now,
+        };
+      }
+    }
+  } catch { /* 忽略：下一轮再试 */ }
+}
+
 function handler(req, res) {
   const cors = {
     'Access-Control-Allow-Origin': '*',
@@ -306,6 +391,7 @@ function handler(req, res) {
       watch: snap.watch,
       anomaly: snap.anomaly,
       gold,
+      macro,
       error: lastError,
     }));
     return;
@@ -351,6 +437,12 @@ export function apply(ctx) {
     const t = setInterval(() => { pollGold().catch(() => {}); }, 3000);
     return () => clearInterval(t);
   }, 'sector-ticker: gold poll');
+
+  fx(() => {
+    pollMacro().catch(() => {});
+    const t = setInterval(() => { pollMacro().catch(() => {}); }, 5000);
+    return () => clearInterval(t);
+  }, 'sector-ticker: macro poll');
 
   fx(() => {
     const t = setInterval(() => { resolveTargets().catch(() => {}); }, 600_000);
